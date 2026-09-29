@@ -39,6 +39,7 @@
 import { useMemo } from 'react';
 
 import {
+  buildDemoHeatWaveSnapshot,
   buildEnvironmentSnapshot,
   buildMockReadings,
   spliceSimulatedFall,
@@ -91,13 +92,25 @@ export type DashboardRisk = {
   readonly requestAccess: () => void;
 };
 
+/**
+ * Demo-mode shaping (workstream I1). Both options are off unless the Dashboard's Demo mode
+ * controls are armed, and both work the same way: they change one of `assessRisk`'s two inputs
+ * and tell nothing downstream that anything unusual happened. Neither ever touches the
+ * assessment on the way out.
+ */
 export type UseRiskAssessmentOptions = {
   /**
-   * Dev-only: splice a fall into the tail of whichever window is live (PRD §7.2.2). Shapes the
-   * engine's *input* and nothing else — see `MockReadingOptions` for why the demo trigger has
-   * to work that way to prove anything.
+   * Splice a fall into the tail of whichever window is live (PRD §7.2.2). Shapes the engine's
+   * *input* and nothing else — see `MockReadingOptions` for why the demo trigger has to work
+   * that way to prove anything.
    */
   readonly simulateFall?: boolean;
+  /**
+   * Replace the environment snapshot with `DEMO_HEAT_WAVE_ENVIRONMENT`'s 44 °C / 55 % RH, so
+   * `rules/heat.ts` computes a NOAA Extreme Danger index from two plausible weather numbers.
+   * The readings are untouched — an armed heat wave cannot move a vital.
+   */
+  readonly simulateHeatWave?: boolean;
 };
 
 export function useRiskAssessment(options: UseRiskAssessmentOptions = {}): DashboardRisk {
@@ -106,6 +119,7 @@ export function useRiskAssessment(options: UseRiskAssessmentOptions = {}): Dashb
   const { settings } = useSettings();
   const now = useNow(RE_EVALUATE_INTERVAL_MS);
   const simulateFall = options.simulateFall === true;
+  const simulateHeatWave = options.simulateHeatWave === true;
   const live = settings.sensorSource === 'health_connect';
   const liveReadings = feed.readings;
   const lastPolledAt = feed.lastPolledAt;
@@ -123,9 +137,16 @@ export function useRiskAssessment(options: UseRiskAssessmentOptions = {}): Dashb
         : liveReadings
       : buildMockReadings(evaluatedAt, { simulateFall });
 
+    // The environment's counterpart of the line above, and deliberately written the same way:
+    // one branch, at the input, swapping *which snapshot the engine is handed*. The real
+    // observation is still narrowed first, because the demo snapshot carries its AQI through —
+    // only the two heat fields are simulated.
+    const real = buildEnvironmentSnapshot(environment);
+    const snapshot = simulateHeatWave ? buildDemoHeatWaveSnapshot(real, evaluatedAt) : real;
+
     const assessment = assessRisk({
       readings,
-      environment: buildEnvironmentSnapshot(environment),
+      environment: snapshot,
       now: evaluatedAt,
     });
     return {
@@ -149,5 +170,6 @@ export function useRiskAssessment(options: UseRiskAssessmentOptions = {}): Dashb
     liveReadings,
     now,
     simulateFall,
+    simulateHeatWave,
   ]);
 }

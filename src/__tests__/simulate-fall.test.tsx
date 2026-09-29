@@ -1,5 +1,11 @@
 /**
- * The dev-only "Simulate Fall" trigger, end to end.
+ * The "Simulate a fall" demo trigger, end to end.
+ *
+ * Since workstream I1 the control is gated on the persisted `demoMode` setting rather than on
+ * `__DEV__`, so blocks 2 and 3 seed `demoMode: true` the way a user who turned Demo mode on in
+ * Settings would have. What the trigger *does* is unchanged, and that is the point of leaving
+ * every assertion below alone: the release-build affordance had better drive exactly the same
+ * detector the dev-only one did. `demo-mode.test.tsx` covers the gating itself.
  *
  * PRD §7.2.2's fall rule is the one Tier-1 flag that cannot be demonstrated by waiting: the
  * shipped demo window describes a person moving about, so the Fall Detection card is
@@ -201,7 +207,7 @@ function renderHome() {
  * dispatches and no location or SMS boundary is reached. Block 3 steps over that boundary
  * deliberately, with the clock injected.
  */
-describe('the Dashboard’s dev trigger drives fall detection and SOS', () => {
+describe('the Dashboard’s demo-mode trigger drives fall detection and SOS', () => {
   beforeEach(async () => {
     jest.spyOn(Date, 'now').mockReturnValue(NOW);
     mockedFetch.mockReset();
@@ -214,7 +220,7 @@ describe('the Dashboard’s dev trigger drives fall detection and SOS', () => {
     await AsyncStorage.clear();
     await AsyncStorage.setItem(
       SETTINGS_KEY,
-      JSON.stringify({ contacts: [MEERA], userName: 'Asha' }),
+      JSON.stringify({ contacts: [MEERA], userName: 'Asha', demoMode: true }),
     );
   });
 
@@ -225,10 +231,10 @@ describe('the Dashboard’s dev trigger drives fall detection and SOS', () => {
   it('is present, labelled as instrumentation, and inert until pressed', async () => {
     const screen = await renderHome();
 
-    expect(screen.getByText('Dev · Simulate a fall')).toBeTruthy();
+    expect(screen.getByText('Simulate a fall')).toBeTruthy();
     expect(
       screen.getByText(
-        'Splices a real impact-then-stillness sequence into the sensor window so the fall rule fires and SOS escalates. Not present in release builds.',
+        'Splices a real impact-then-stillness sequence into the sensor window so the fall rule fires and SOS escalates. Nothing is saved to your history.',
       ),
     ).toBeTruthy();
 
@@ -242,7 +248,7 @@ describe('the Dashboard’s dev trigger drives fall detection and SOS', () => {
   it('turns the fall card red with the engine’s own guidance and metric', async () => {
     const screen = await renderHome();
 
-    await fireEvent.press(screen.getByText('Dev · Simulate a fall'));
+    await fireEvent.press(screen.getByText('Simulate a fall'));
 
     // Both strings are built inside the engine — the headline by `recommend()` selecting the
     // ladder's 90-rung from a score of 100, the metric by `assessFall` formatting the impact it
@@ -270,7 +276,7 @@ describe('the Dashboard’s dev trigger drives fall detection and SOS', () => {
       expect(screen.getByText(/^Alerts your contact with your location/)).toBeTruthy(),
     );
 
-    await fireEvent.press(screen.getByText('Dev · Simulate a fall'));
+    await fireEvent.press(screen.getByText('Simulate a fall'));
 
     await waitFor(() => expect(screen.getByText('CRITICAL RISK DETECTED')).toBeTruthy());
 
@@ -289,7 +295,7 @@ describe('the Dashboard’s dev trigger drives fall detection and SOS', () => {
   it('clears back to a green fall card, so the demo can be re-run', async () => {
     const screen = await renderHome();
 
-    await fireEvent.press(screen.getByText('Dev · Simulate a fall'));
+    await fireEvent.press(screen.getByText('Simulate a fall'));
     await waitFor(() => expect(screen.getByText('Impact 3.1g, still 60s')).toBeTruthy());
 
     await fireEvent.press(screen.getByText("Cancel — I'm OK"));
@@ -301,7 +307,7 @@ describe('the Dashboard’s dev trigger drives fall detection and SOS', () => {
       expect(screen.getByText('No fall or unusual stillness detected.')).toBeTruthy(),
     );
     expect(screen.queryByText('Impact 3.1g, still 60s')).toBeNull();
-    expect(screen.getByText('Dev · Simulate a fall')).toBeTruthy();
+    expect(screen.getByText('Simulate a fall')).toBeTruthy();
   });
 });
 
@@ -359,7 +365,7 @@ describe('the simulated fall’s alert reaches a contact with a location', () =>
     await AsyncStorage.clear();
     await AsyncStorage.setItem(
       SETTINGS_KEY,
-      JSON.stringify({ contacts: [MEERA], userName: 'Asha' }),
+      JSON.stringify({ contacts: [MEERA], userName: 'Asha', demoMode: true }),
     );
     process.env.EXPO_PUBLIC_SOS_RELAY_URL = ENDPOINT;
   });

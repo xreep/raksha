@@ -58,6 +58,8 @@ export type SettingsStore = {
   readonly setProfile: (patch: Partial<UserProfile>) => void;
   /** M3 alerts: the Settings "Alert notifications" toggle. */
   readonly setAlertsEnabled: (enabled: boolean) => void;
+  /** I1 demo mode: the Settings "Demo mode" toggle. See `PersistedSettings.demoMode`. */
+  readonly setDemoMode: (enabled: boolean) => void;
 };
 
 const SettingsContext = createContext<SettingsStore | null>(null);
@@ -123,6 +125,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setSettings((prev) => ({ ...prev, alerts: { ...prev.alerts, enabled } }));
   }, []);
 
+  const setDemoMode = useCallback((enabled: boolean) => {
+    setSettings((prev) => ({ ...prev, demoMode: enabled }));
+  }, []);
+
   return (
     <SettingsContext.Provider
       value={{
@@ -136,6 +142,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         setSensorSource,
         setProfile,
         setAlertsEnabled,
+        setDemoMode,
       }}>
       {children}
     </SettingsContext.Provider>

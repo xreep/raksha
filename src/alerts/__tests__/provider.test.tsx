@@ -43,6 +43,7 @@ function settingsStoreWith(alertsEnabled: boolean) {
     setSharing: jest.fn(),
     setSensorSource: jest.fn(),
     setAlertsEnabled: jest.fn(),
+    setDemoMode: jest.fn(),
     setProfile: jest.fn(),
   };
 }

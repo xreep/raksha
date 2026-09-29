@@ -24,13 +24,22 @@
 
 import { VITALS } from '@/constants/health-data';
 import {
+  buildDemoHeatWaveSnapshot,
   buildEnvironmentSnapshot,
   buildMockReadings,
+  DEMO_HEAT_WAVE_ENVIRONMENT,
   MOCK_WINDOW,
   spliceSimulatedFall,
 } from '@/constants/mock-sensor-window';
 import { FIXTURE_OBSERVATION_AGE_MS, liveEnvironment } from '@/environment/__tests__/fixtures';
-import { assessRisk, computeVitalBaselines, DEFAULT_RISK_THRESHOLDS as T } from '@/risk';
+import {
+  assessRisk,
+  computeVitalBaselines,
+  computeHeatIndexF,
+  celsiusToFahrenheit,
+  DEFAULT_RISK_THRESHOLDS as T,
+  HEAT_INDEX_BAND_MIN_F,
+} from '@/risk';
 import type { SensorReading } from '@/risk';
 
 /** Fixed instant, so every expectation below is exact. Matches the fixture's `FIXTURE_NOW`. */
@@ -583,5 +592,112 @@ describe('spliceSimulatedFall (live mode)', () => {
     const spliced = spliceSimulatedFall([], NOW);
     expect(spliced.map((r) => r.timestamp - NOW)).toEqual([-2 * MINUTE, -MINUTE, 0]);
     expect(spliced[0].motionSummary).toEqual(MOCK_WINDOW.fallImpact);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Demo mode's heat-wave environment (workstream I1)
+// ---------------------------------------------------------------------------
+
+/**
+ * The heat-wave counterpart of `FALL_MOTION`, and the same discipline applies: the demo shapes
+ * the engine's *input* — two weather numbers — and the heat rule has to reach Extreme Danger on
+ * its own from them. Nothing here may assert a band that the demo constant itself declares.
+ *
+ * Which is why these tests derive the expectation from `heat-index.ts`'s published NOAA floor
+ * rather than restating "125". A demo temperature that quietly slipped under the floor would
+ * otherwise still light a red card (Danger is red too) and nobody would notice that the band
+ * being demonstrated was not the band on the label.
+ */
+describe('DEMO_HEAT_WAVE_ENVIRONMENT (demo mode)', () => {
+  const NOW = 1_766_000_000_000;
+
+  it('is the two documented weather numbers and nothing else', () => {
+    // Deliberately no `heatIndexC`: `EnvironmentSnapshot.heatIndexC` is a trusted-upstream
+    // *override*, and supplying one would let the demo hand the engine its own answer. The
+    // whole point is that `rules/heat.ts` computes the index from these two numbers.
+    expect(DEMO_HEAT_WAVE_ENVIRONMENT).toEqual({ tempC: 44, humidity: 55 });
+  });
+
+  it('reaches NOAA’s Extreme Danger floor from the temperature and humidity alone', () => {
+    const { tempC, humidity } = DEMO_HEAT_WAVE_ENVIRONMENT;
+    const heatIndexF = computeHeatIndexF(celsiusToFahrenheit(tempC), humidity);
+
+    expect(heatIndexF).not.toBeNull();
+    expect(heatIndexF as number).toBeGreaterThanOrEqual(HEAT_INDEX_BAND_MIN_F.extremeDanger);
+  });
+
+  it('stamps the observation at `now`, so the engine never scores it stale', () => {
+    const snapshot = buildDemoHeatWaveSnapshot(null, NOW);
+
+    expect(snapshot.observedAt).toBe(NOW);
+    expect(NOW - (snapshot.observedAt as number)).toBeLessThan(T.env.maxStaleMs);
+  });
+
+  it('carries the real observation’s AQI through, so only the heat is simulated', () => {
+    const real = buildEnvironmentSnapshot(liveEnvironment({ aqi: 168 }));
+    const snapshot = buildDemoHeatWaveSnapshot(real, NOW);
+
+    expect(snapshot.aqi).toBe(168);
+    expect(snapshot.tempC).toBe(44);
+    expect(snapshot.humidity).toBe(55);
+  });
+
+  it('omits the AQI entirely when there is no real observation to carry one from', () => {
+    // Not zero, and not a made-up number. `EnvironmentSnapshot.aqi` is optional precisely so
+    // the respiratory rule can say "unknown" instead of asserting clean air on nothing.
+    expect(buildDemoHeatWaveSnapshot(null, NOW)).not.toHaveProperty('aqi');
+    expect(
+      buildDemoHeatWaveSnapshot(buildEnvironmentSnapshot(liveEnvironment({ aqi: null })), NOW),
+    ).not.toHaveProperty('aqi');
+  });
+
+  it('makes the real heat rule fire `heat.index.extremeDanger` on the demo window', () => {
+    const assessment = assessRisk({
+      readings: buildMockReadings(NOW),
+      environment: buildDemoHeatWaveSnapshot(null, NOW),
+      now: NOW,
+    });
+    const heat = assessment.byCategory.heat;
+
+    expect(heat.firedRules).toContain('heat.index.extremeDanger');
+    expect(heat.level).toBe('red');
+    // Composed inside `rules/heat.ts` — the ladder's 90-rung headline, selected by a score the
+    // rule derived from the index it computed itself. This string exists nowhere in the demo
+    // constant or in this file's inputs.
+    expect(heat.guidance).toBe(
+      'Extreme heat danger — get indoors or into shade and cool down now.',
+    );
+  });
+
+  it('does not escalate to suspected heat collapse on the moving demo window', () => {
+    // The shipped window's tail is `ACTIVE`. Extreme heat alone is not an emergency — PRD
+    // §7.2.5 needs ten trailing minutes of stillness too — so a demo heat wave must *not* open
+    // the SOS countdown. If it did, the fall demo could no longer be told apart from it.
+    const assessment = assessRisk({
+      readings: buildMockReadings(NOW),
+      environment: buildDemoHeatWaveSnapshot(null, NOW),
+      now: NOW,
+    });
+
+    expect(assessment.byCategory.heat.criticalRules).toEqual([]);
+    expect(assessment.criticalRules).toEqual([]);
+    expect(assessment.sosCandidate).toBe(false);
+  });
+
+  it('reports the index as a floor, because 44 °C is past the regression’s domain', () => {
+    // 44 °C is 111.2 °F, over `HEAT_INDEX_MAX_VALID_TEMP_F` (110). The engine's own presentation
+    // guard therefore marks the category `partial` and prints "over N°C" rather than a figure a
+    // person could read as an apparent temperature. That is the honest rendering of a real
+    // Indian heat-wave temperature, and it is pinned here so it cannot regress into a confident
+    // number the NWS chart does not cover.
+    const heat = assessRisk({
+      readings: buildMockReadings(NOW),
+      environment: buildDemoHeatWaveSnapshot(null, NOW),
+      now: NOW,
+    }).byCategory.heat;
+
+    expect(heat.dataQuality).toBe('partial');
+    expect(heat.metric).toMatch(/^Heat index over \d+°C$/);
   });
 });

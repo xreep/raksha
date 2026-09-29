@@ -25,6 +25,12 @@ const ERASE_TITLE = 'Erase my health data';
 const ERASE_DESCRIPTION =
   'Deletes all readings stored on this phone. Settings and contacts are kept.';
 
+/** Workstream I1. Stated in full here, in calm conditions, because the Dashboard's own label
+ *  has room for two words and this is where the guarantee behind them is written down. */
+const DEMO_TITLE = 'Demo mode';
+const DEMO_DESCRIPTION =
+  'Adds buttons to the Dashboard that inject simulated sensor readings so the risk engine can be demonstrated. A "Demo mode" label stays on screen while it is on. Simulated readings are never saved to your history.';
+
 export default function SettingsScreen() {
   const {
     settings,
@@ -37,6 +43,7 @@ export default function SettingsScreen() {
     setSensorSource,
     setProfile,
     setAlertsEnabled,
+    setDemoMode,
   } = useSettings();
   const theme = useTheme();
   const risk = useRiskColors();
@@ -253,6 +260,22 @@ export default function SettingsScreen() {
             value={settings.profile.pregnant}
             onValueChange={(value) => setProfile({ pregnant: value })}
             accessibilityLabel="Pregnant"
+          />
+        </SettingRow>
+      </Card>
+
+      {/* Its own section rather than a row inside "About you" or "Data sharing": this is the
+          only setting that changes what the Dashboard *claims to have measured*, and burying it
+          among preferences that describe the user, or among ones that govern what leaves the
+          phone, would understate it. The description is the honesty contract — see
+          `docs/features/demo-mode.md`. */}
+      <ThemedText type="smallBold">Demo mode</ThemedText>
+      <Card>
+        <SettingRow title={DEMO_TITLE} description={DEMO_DESCRIPTION}>
+          <Switch
+            value={settings.demoMode}
+            onValueChange={setDemoMode}
+            accessibilityLabel={DEMO_TITLE}
           />
         </SettingRow>
       </Card>

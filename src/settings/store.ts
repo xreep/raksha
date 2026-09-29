@@ -63,6 +63,20 @@ export type PersistedSettings = {
    */
   readonly profile: UserProfile;
   readonly alerts: AlertPrefs;
+  /**
+   * Demo mode (workstream I1): puts the Dashboard's simulation controls on screen in *release*
+   * builds, with a permanent "Demo mode" label beside the header while it is on.
+   *
+   * A persisted setting rather than a `__DEV__` check, because the thing being demonstrated is
+   * the shipped APK — a control that only exists in a development bundle cannot be shown to
+   * anyone holding the phone. It is off by default and fails closed on read (see
+   * {@link parseSettings}): the controls shape the engine's *input*, so a blob we cannot read
+   * must never resolve into "show simulated readings".
+   *
+   * Nothing this flag enables is ever written to the reading store — see
+   * `docs/features/demo-mode.md`.
+   */
+  readonly demoMode: boolean;
 };
 
 const DEFAULT_SHARING: SharingPrefs = Object.freeze(
@@ -82,6 +96,7 @@ export const DEFAULT_SETTINGS: PersistedSettings = Object.freeze({
   sensorSource: DEFAULT_SENSOR_SOURCE,
   profile: DEFAULT_PROFILE,
   alerts: DEFAULT_ALERTS,
+  demoMode: false,
 });
 
 const SHARING_KEYS = new Set<string>(DATA_SHARING_PREFS.map((pref) => pref.key));
@@ -183,6 +198,10 @@ function parseSettings(value: unknown): PersistedSettings {
     // that the same as an explicit `undefined`, so no extra branch is needed here.
     profile: parseProfile(record.profile),
     alerts: parseAlerts(record.alerts),
+    // Fails *closed*, which is the opposite of `parseAlerts` and deliberate. A missing field is
+    // an old blob; a `'true'` or a `1` is a blob we do not understand. Neither is a user asking
+    // for simulated readings on their Dashboard, so only a literal boolean `true` turns it on.
+    demoMode: record.demoMode === true,
   };
 }
 

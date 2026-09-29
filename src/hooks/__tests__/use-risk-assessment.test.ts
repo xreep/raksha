@@ -69,6 +69,7 @@ beforeEach(() => {
     setSensorSource: jest.fn(),
     setProfile: jest.fn(),
     setAlertsEnabled: jest.fn(),
+    setDemoMode: jest.fn(),
   });
 });
 
@@ -198,5 +199,123 @@ describe('useRiskAssessment source selection', () => {
       'fall.impactThenStillness',
     );
     expect(result.current.assessment.sosCandidate).toBe(true);
+  });
+});
+
+/**
+ * `simulateHeatWave` (workstream I1) is the environment-side twin of `simulateFall`, and the
+ * question it has to answer is the same one: does it change the engine's *input* and leave
+ * everything downstream to decide for itself?
+ *
+ * So the first test here is the negative control — with the option off, absent, or explicitly
+ * false, the hook's output has to be byte-identical to what it produced before this option
+ * existed. An option that silently perturbed the default path would be a live lie in a health
+ * app, and it is the failure no test of the armed path can catch.
+ */
+describe('useRiskAssessment simulateHeatWave', () => {
+  const REAL_WEATHER = {
+    location: 'Chennai',
+    coordinates: { latitude: 13.08, longitude: 80.27 },
+    locationSource: 'device' as const,
+    observedAt: NOW - 12 * 60 * 1000,
+    fetchedAt: NOW - 12 * 60 * 1000,
+    tempC: 24,
+    humidity: 48,
+    heatIndexC: null,
+    heatIndexBand: null,
+    aqi: 168,
+    aqiCategory: null,
+    aqiBasis: null,
+    pollutants: {},
+    advisories: [],
+  };
+
+  function withRealWeather() {
+    environment.mockReturnValue({
+      environment: REAL_WEATHER,
+      status: 'live',
+      failure: null,
+      refreshing: false,
+      refresh: jest.fn(),
+    });
+  }
+
+  it('leaves the default path byte-identical when the option is off', async () => {
+    withRealWeather();
+
+    const before = (await renderHook(() => useRiskAssessment())).result.current.assessment;
+    const omitted = (await renderHook(() => useRiskAssessment({}))).result.current.assessment;
+    const explicit = (await renderHook(() => useRiskAssessment({ simulateHeatWave: false })))
+      .result.current.assessment;
+
+    expect(omitted).toEqual(before);
+    expect(explicit).toEqual(before);
+    // And the baseline really is a cool day, or "unchanged" would be unfalsifiable.
+    expect(before.byCategory.heat.firedRules).toEqual([]);
+    expect(before.byCategory.heat.level).toBe('green');
+  });
+
+  it('swaps the environment snapshot so the real heat rule reaches Extreme Danger', async () => {
+    withRealWeather();
+
+    const { result } = await renderHook(() => useRiskAssessment({ simulateHeatWave: true }));
+
+    // The rule id, not a colour: Danger is red too, so a colour assertion would pass on the
+    // wrong band. This id is pushed by `rules/heat.ts` off an index it computed itself from the
+    // two demo numbers.
+    expect(result.current.assessment.byCategory.heat.firedRules).toContain(
+      'heat.index.extremeDanger',
+    );
+  });
+
+  it('keeps the real AQI, so only the weather half of the environment is simulated', async () => {
+    withRealWeather();
+
+    const { result } = await renderHook(() => useRiskAssessment({ simulateHeatWave: true }));
+
+    // 168 is the real observation's AQI. The respiratory card is still describing the air the
+    // user is actually breathing — `rules/respiratory.ts`'s own advisory precursor is the
+    // observable proof that the number survived the swap.
+    expect(result.current.assessment.byCategory.respiratory.firedRules.join(' ')).toContain(
+      'respiratory.aqi',
+    );
+  });
+
+  it('does not touch the readings, so an armed heat wave cannot fabricate a vital', async () => {
+    withRealWeather();
+
+    const plain = (await renderHook(() => useRiskAssessment())).result.current;
+    const armed = (await renderHook(() => useRiskAssessment({ simulateHeatWave: true })))
+      .result.current;
+
+    expect(armed.latest).toEqual(plain.latest);
+    expect(armed.latestVitals).toEqual(plain.latestVitals);
+    expect(armed.vitalReadingCount).toBe(plain.vitalReadingCount);
+  });
+
+  it('composes with simulateFall without either option swallowing the other', async () => {
+    withRealWeather();
+
+    const { result } = await renderHook(() =>
+      useRiskAssessment({ simulateFall: true, simulateHeatWave: true }),
+    );
+    const { assessment } = result.current;
+
+    expect(assessment.byCategory.heat.firedRules).toContain('heat.index.extremeDanger');
+    expect(assessment.byCategory.fall.criticalRules).toContain('fall.impactThenStillness');
+    // Extreme heat plus a *60-second* still run is not PRD §7.2.5's collapse (it needs ten
+    // trailing minutes), so the countdown still names the fall and only the fall.
+    expect(assessment.criticalRules).toEqual(['fall.impactThenStillness']);
+  });
+
+  it('simulates the weather even before the live feed has produced an observation', async () => {
+    // `environment` is null in the file-level default. The demo must still work at cold start —
+    // and the AQI is simply absent rather than invented.
+    const { result } = await renderHook(() => useRiskAssessment({ simulateHeatWave: true }));
+
+    expect(result.current.assessment.byCategory.heat.firedRules).toContain(
+      'heat.index.extremeDanger',
+    );
+    expect(result.current.assessment.byCategory.heat.dataQuality).not.toBe('stale');
   });
 });

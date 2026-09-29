@@ -235,6 +235,61 @@ export function buildEnvironmentSnapshot(
 }
 
 /**
+ * Demo mode's heat wave: the *weather* the engine is handed while "Simulate a heat wave" is
+ * armed (workstream I1).
+ *
+ * ## Why two numbers and not a heat index
+ * `EnvironmentSnapshot.heatIndexC` is a trusted-upstream override — supply one and the heat
+ * rule stops computing and starts believing. That would be the heat equivalent of forcing the
+ * fall card red: it would demonstrate the *card* and prove nothing about the rule. So the demo
+ * injects only a dry-bulb temperature and a relative humidity, exactly the two fields a real
+ * OpenWeatherMap observation contributes, and `rules/heat.ts` runs the NOAA regression over
+ * them and bands the result itself. `mock-sensor-window.test.ts` asserts the resulting index
+ * clears `HEAT_INDEX_BAND_MIN_F.extremeDanger` rather than restating the band here.
+ *
+ * ## Why 44 °C at 55 % RH
+ * Both are ordinary readings for an Indian pre-monsoon heat wave (PS 26181's setting), which
+ * matters: a demo that needed physically absurd weather to reach Extreme Danger would be
+ * showing an unreachable rule. At 111.2 °F this also sits just past
+ * `HEAT_INDEX_MAX_VALID_TEMP_F` (110), so the engine's own presentation guard marks the
+ * category `partial` and prints the index as a floor ("Heat index over N°C") instead of a
+ * number the NWS chart does not cover. That is the correct, honest rendering and it is pinned
+ * by test — it is not a defect of the chosen values.
+ */
+export const DEMO_HEAT_WAVE_ENVIRONMENT = { tempC: 44, humidity: 55 } as const;
+
+/**
+ * The snapshot demo mode hands `assessRisk` in place of the live observation.
+ *
+ * Only the two heat fields are simulated. The AQI is carried through from the real observation
+ * when the feed has produced one, so the respiratory card keeps describing the air the user is
+ * actually breathing while the heat card describes the simulated weather — and is **omitted**
+ * rather than zeroed when there is no observation yet, for the reason
+ * {@link buildEnvironmentSnapshot} gives about `null`: an absent AQI makes the respiratory rule
+ * decline to judge, while a `0` would have it assert clean air on nothing.
+ *
+ * `observedAt` is `now`, not the real observation's timestamp. A simulated reading is made at
+ * the instant it is injected, and back-dating it to a real observation that may be 50 minutes
+ * old would have `env.maxStaleMs` mark the demo stale partway through showing it.
+ *
+ * @param real The current live snapshot, or null before the first fetch — the only thing read
+ *   from it is `aqi`.
+ * @param now Evaluation instant in epoch ms.
+ */
+export function buildDemoHeatWaveSnapshot(
+  real: EnvironmentSnapshot | null,
+  now: number,
+): EnvironmentSnapshot {
+  const aqi = real?.aqi;
+  return {
+    tempC: DEMO_HEAT_WAVE_ENVIRONMENT.tempC,
+    humidity: DEMO_HEAT_WAVE_ENVIRONMENT.humidity,
+    ...(aqi === undefined ? {} : { aqi }),
+    observedAt: now,
+  };
+}
+
+/**
  * Live-mode counterpart of {@link FALL_MOTION}, for the same dev-only Dashboard control when
  * the buffer comes from Health Connect rather than from this file.
  *

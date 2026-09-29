@@ -701,6 +701,67 @@ describe('erase my health data (M6)', () => {
   });
 });
 
+/**
+ * Demo mode (workstream I1).
+ *
+ * The row is a switch like any other, so the persistence assertions look like the ones above.
+ * What is *not* routine is the description: it is the only place a user is told, in calm
+ * conditions, what turning this on will put on their Dashboard and what it will not do to their
+ * history. It is asserted verbatim for the same reason the SOS copy is — a health app's honesty
+ * claims are part of the feature, and prose quietly softened in a later edit is exactly the
+ * change no behavioural test would catch.
+ */
+describe('demo mode', () => {
+  const DEMO_DESCRIPTION =
+    'Adds buttons to the Dashboard that inject simulated sensor readings so the risk engine can be demonstrated. A "Demo mode" label stays on screen while it is on. Simulated readings are never saved to your history.';
+
+  it('is off by default, and says exactly what it does', async () => {
+    const screen = await renderSettings();
+
+    await waitFor(() => expect(screen.getByLabelText('Demo mode')).toBeTruthy());
+    expect(screen.getByLabelText('Demo mode').props.value).toBe(false);
+    expect(screen.getByText(DEMO_DESCRIPTION)).toBeTruthy();
+  });
+
+  it('persists turning it on', async () => {
+    const screen = await renderSettings();
+    await waitFor(() => expect(screen.getByLabelText('Demo mode')).toBeTruthy());
+
+    await fireEvent(screen.getByLabelText('Demo mode'), 'valueChange', true);
+
+    await waitFor(async () => {
+      await expect(readSettings()).resolves.toMatchObject({ demoMode: true });
+    });
+  });
+
+  it('persists turning it back off', async () => {
+    await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify({ demoMode: true }));
+
+    const screen = await renderSettings();
+    await waitFor(() => expect(screen.getByLabelText('Demo mode').props.value).toBe(true));
+
+    await fireEvent(screen.getByLabelText('Demo mode'), 'valueChange', false);
+
+    await waitFor(async () => {
+      await expect(readSettings()).resolves.toMatchObject({ demoMode: false });
+    });
+  });
+
+  it('survives a remount, so the state on screen is the state on disk', async () => {
+    const first = await renderSettings();
+    await waitFor(() => expect(first.getByLabelText('Demo mode')).toBeTruthy());
+    await fireEvent(first.getByLabelText('Demo mode'), 'valueChange', true);
+    await waitFor(async () => {
+      await expect(readSettings()).resolves.toMatchObject({ demoMode: true });
+    });
+    await first.unmount();
+
+    const second = await renderSettings();
+
+    await waitFor(() => expect(second.getByLabelText('Demo mode').props.value).toBe(true));
+  });
+});
+
 describe('about you', () => {
   it('says plainly why it is asking and that it never leaves the device', async () => {
     const screen = await renderSettings();

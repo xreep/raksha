@@ -68,6 +68,7 @@ function settingsStore(overrides: Partial<SettingsStore['settings']> = {}): Sett
     setSensorSource: jest.fn(),
     setProfile: jest.fn(),
     setAlertsEnabled: jest.fn(),
+    setDemoMode: jest.fn(),
   };
 }
 

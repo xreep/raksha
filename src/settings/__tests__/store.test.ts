@@ -95,6 +95,13 @@ describe('defaults', () => {
     // does its job if it is on for a user who never opens Settings.
     expect(DEFAULT_SETTINGS.alerts).toEqual({ enabled: true });
   });
+
+  it('keeps demo mode off by default', () => {
+    // The opposite default to `alerts`, for the opposite reason. Demo mode puts controls on the
+    // Dashboard that hand the engine *shaped* input; a user who never opens Settings must never
+    // end up looking at a simulated reading they did not ask for.
+    expect(DEFAULT_SETTINGS.demoMode).toBe(false);
+  });
 });
 
 describe('readSettings — validating what a previous build left behind', () => {
@@ -106,6 +113,7 @@ describe('readSettings — validating what a previous build left behind', () => 
       sensorSource: 'ble_esp32',
       profile: { ageBand: '60plus', chronicCondition: true, outdoorWorker: false, pregnant: false },
       alerts: { enabled: false },
+      demoMode: true,
     };
 
     expect(await writeSettings(settings)).toBe(true);
@@ -160,6 +168,34 @@ describe('readSettings — validating what a previous build left behind', () => 
     for (const alerts of [null, 'nope', 42, { enabled: 'yes' }, {}]) {
       await seed(JSON.stringify({ alerts }));
       await expect(readSettings()).resolves.toMatchObject({ alerts: { enabled: true } });
+    }
+  });
+
+  it('leaves demo mode off when a previous build never wrote the field', async () => {
+    // The field did not exist before this workstream. An old blob missing it reads as off,
+    // which is both the default and the only safe reading — nothing about an old install says
+    // its owner wanted simulation controls.
+    await seed(JSON.stringify({ userName: 'Asha', contacts: [MEERA] }));
+
+    const settings = await readSettings();
+
+    expect(settings.demoMode).toBe(false);
+    expect(settings.userName).toBe('Asha');
+    expect(settings.contacts).toEqual([MEERA]);
+  });
+
+  it('honours a stored demoMode: true', async () => {
+    await seed(JSON.stringify({ demoMode: true }));
+
+    await expect(readSettings()).resolves.toMatchObject({ demoMode: true });
+  });
+
+  it('reads anything that is not a literal true as off', async () => {
+    // Fails *closed*, unlike `alerts`. Every other shape — a truthy string, a 1, an object —
+    // is a blob we do not understand, and "show simulated data" is not a state to guess into.
+    for (const demoMode of [null, undefined, 'true', 'yes', 1, 0, {}, [], 'false', false]) {
+      await seed(JSON.stringify({ demoMode }));
+      await expect(readSettings()).resolves.toMatchObject({ demoMode: false });
     }
   });
 
