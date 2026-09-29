@@ -366,9 +366,23 @@ describe('dispatch', () => {
     });
 
     it('sequential mode: a hung first adapter is abandoned and the next one gets a deadline row, not a wait', async () => {
+      // The clock is injected so the boundary is exact. With a wall clock, a slow runner can
+      // enter the second attempt with ~1 ms of budget left: the response is still correct (both
+      // rows are `deadline exceeded`, nothing waits past the deadline) but `send` has been
+      // called, which made this assertion flake on CI. Advancing the fake clock past the
+      // deadline once the first adapter hangs pins the property the test is actually about:
+      // the second adapter is never started after the budget is gone.
       const adapters = fakes({ telegram: { needs: 'telegramChatId', before: hang } });
       const t0 = Date.now();
-      const response = await dispatch(request(), adapters, makeEnv({ SMS_ALWAYS: 'false' }), { deadlineMs: 150 });
+      let clock = 0;
+      const response = await dispatch(request(), adapters, makeEnv({ SMS_ALWAYS: 'false' }), {
+        deadlineMs: 150,
+        now: () => {
+          const value = clock;
+          clock = 200; // every read after the first is past the 150 ms deadline
+          return value;
+        },
+      });
       expect(Date.now() - t0).toBeLessThan(1_000);
       expect(response).toEqual({
         delivered: false,
