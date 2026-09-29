@@ -15,7 +15,7 @@
 
 import { sendViaNativeSms, type NativeSmsOptions } from '@/sos/native-sms';
 
-const MESSAGE = 'PHC EMERGENCY - Asha needs help.';
+const MESSAGE = 'RAKSHA EMERGENCY - Asha needs help.';
 const RECIPIENTS = ['+919876543210', '+919123456780'];
 
 type SmsImpl = NonNullable<NativeSmsOptions['smsImpl']>;

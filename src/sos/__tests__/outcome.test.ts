@@ -19,7 +19,7 @@ function result(overrides: Partial<SosDispatchResult>): SosDispatchResult {
     relayDelivered: [],
     nativeSmsPending: false,
     failed: false,
-    message: 'PHC EMERGENCY',
+    message: 'RAKSHA EMERGENCY',
     ...overrides,
   };
 }

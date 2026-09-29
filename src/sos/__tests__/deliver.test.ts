@@ -137,7 +137,7 @@ describe('dispatchSos — the relay reaches everyone', () => {
       (call) => (JSON.parse(String(call[1]?.body)) as { message: string }).message,
     );
     expect(bodies).toEqual([result.message, result.message]);
-    expect(result.message).toContain('PHC EMERGENCY - Asha needs help.');
+    expect(result.message).toContain('RAKSHA EMERGENCY - Asha needs help.');
   });
 
   it('sends each contact’s own destination and channel list', async () => {
@@ -407,7 +407,7 @@ describe('dispatchSos — degenerate input', () => {
     // The message is still composed. The machine refuses this case before it gets here, but a
     // result with an empty `message` would render a blank "what was sent" disclosure if it ever
     // did — and an empty string is indistinguishable from a composition bug.
-    expect(result.message).toContain('PHC EMERGENCY');
+    expect(result.message).toContain('RAKSHA EMERGENCY');
   });
 
   it('sends an alert with no coordinates rather than no alert', async () => {

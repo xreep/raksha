@@ -1,168 +1,125 @@
-# Personal Health Companion (PHC)
+# Raksha
 
-Mobile app for Smart India Hackathon Problem Statement **26181** — an AI-powered Personal Health
-Companion for disaster resilience.
+Offline AI health guardian for heat waves, floods and smog. Built for Smart India Hackathon 2026, PS 26181 (Qualcomm).
 
-## Problem
+## What it does
 
-India faces recurring public-health challenges during and after disasters — heat stress,
-dehydration, respiratory illness, cardiovascular complications, and delayed access to care, often
-worsened by heat waves, floods, cyclones, and air-pollution events. There is a need for a secure,
-privacy-preserving Personal Health Companion that monitors key vitals continuously, warns users
-before a physiological risk becomes an emergency, fuses that risk with local environmental
-conditions, and can reach an emergency contact even with poor connectivity — without raw health data
-leaving the user's phone.
+Raksha reads vitals from a wearable through Android Health Connect, folds in the phone's own
+accelerometer, and scores health risk **on the device** — no account, no server, no vitals leaving
+the phone. It combines those readings with local weather and air quality to answer a question a
+fitness app cannot: *is this heart rate, in this heat, a problem for this person right now?*
 
-## Solution
+- **On-device risk scoring.** Six rule categories — heat stress (NOAA heat index), respiratory,
+  cardiovascular, falls, dehydration and fatigue — each producing a level, a plain-language
+  recommendation and a 0–100 score. Runs with no connectivity.
+- **Environmental context.** Live temperature, humidity and air quality for a coarse location;
+  cached so the last known reading still informs the score offline.
+- **Disaster-relevant alerts.** Heat-index bands, an air-quality advisory that raises respiratory
+  risk when the AQI is unhealthy, and static flood/cyclone preparedness guidance.
+- **Emergency SOS.** A critical reading starts a 30-second cancel window, then sends the alert
+  with vitals and a location link — automatically over any data connection via a relay the team
+  owns, and as a pre-filled SMS needing one tap when there is no data.
+- **Local history.** Readings are stored on the phone for seven days and shown as 24-hour and
+  7-day trends. An erase control deletes them.
 
-PHC reads vitals from whatever band or phone sensor a user already has (via Android Health Connect,
-plus the phone's own accelerometer), scores them with an on-device rule engine fused with live
-weather/AQI, and — on a critical event — starts a 30-second SOS countdown that texts emergency
-contacts with the user's vitals and location, entirely without a backend holding any of that data.
+## Current status
 
-## Architecture
+Verified on one Android 15 device with an EAS development build unless noted. "Device validated"
+means it ran on that phone, not that it has been tested with real users over time.
 
-See [`docs/architecture/overview.md`](docs/architecture/overview.md) for the full data-flow diagram.
-In short: Health Connect and the accelerometer feed adapters into one `SensorReading` schema → a
-persisted `expo-sqlite` reading store → the pure rule engine (fused with an environment snapshot) →
-the Dashboard/Trends and, on a critical rule, the SOS state machine → the multi-channel emergency
-relay (Telegram/SMS) or native SMS composer fallback.
+**Done — device validated**
 
-## Major features and validation status
+- Health Connect ingestion: permissions, heart rate and SpO₂ read into the risk engine.
+- Rule engine on live data: SpO₂ below the threshold raises the respiratory card; two critical
+  samples escalate to the SOS countdown.
+- Air-quality advisory firing on real local AQI.
+- Local notifications on a risk-level change, including the foreground-handler fix that made them
+  appear at all.
+- SOS fallback: countdown expiry opens the SMS composer, pre-filled and addressed.
+- Emergency relay deployed on Cloudflare Workers; a Telegram alert delivered to a real phone in
+  about a second.
 
-Every status below uses the ladder: **Built / Unit tested / Integration tested / Device validated /
-Real-world validated / Mock-demo / Planned**. Full detail in
-[`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) and [`docs/BUILD_MATRIX.md`](docs/BUILD_MATRIX.md).
+**Done — code complete, tested in CI, not yet exercised on the phone**
 
-| Feature | Status |
-| --- | --- |
-| Rule-based risk engine (heat, respiratory, cardiovascular, fall, dehydration, fatigue) | Built · Unit tested |
-| Environment context (weather + AQI, offline cache) | Built · Unit/integration tested · live weather seen on the August APK |
-| Health Connect ingestion (HR, SpO₂, skin temp) + accelerometer fold | Built · Unit tested against mocked native modules — **not device validated** |
-| Local reading store (`expo-sqlite`, 7-day retention, erase control) | Built · Unit/integration tested — **not device validated** (new EAS build in progress) |
-| Trends screen (real 24h/7d history from the store) | Built · Unit/integration tested — **not device validated** |
-| Emergency relay (Cloudflare Worker: Telegram, Textbelt, Twilio) | Built · Unit tested (vitest, 142) · **Telegram lane device validated** (2026-09-21); Textbelt blocked for India; Twilio disabled |
-| Emergency SOS (app-side relay dispatch + Telegram linking, SMS composer fallback) | Built · Unit/integration tested — relay dispatch **not device validated**; composer fallback device validated |
-| Settings (contacts, sharing prefs, sensor source) | Built · Unit tested · plaintext AsyncStorage (not encrypted) |
-| Community ward summary | Mock-demo — real aggregation logic, hardcoded demo cohort |
-| Background sensing | Planned |
+- Persistent reading store (SQLite) and the trends screen that reads from it.
+- App-side relay dispatch and the in-app Telegram linking flow for an emergency contact.
+- User profile capture (age band, chronic condition, outdoor worker). It deliberately does not
+  change any threshold yet; that needs a methodology review first.
 
-**Nothing in this repository is device- or real-world-validated except UI rendering, live
-OpenWeatherMap weather (August development build, simulated vitals window), the first Health
-Connect/SOS-composer run, and the deployed relay's Telegram lane (validated by hand, 2026-09-21).**
+**Known limitations**
 
-## AI approach
+- Sensing runs only while the app is open. A fall with the phone in a pocket and the screen off is
+  not detected yet. Background sensing is the next milestone.
+- Free SMS gateways refuse Indian numbers, and no consumer app on Android or iOS may send an SMS
+  silently. Automatic delivery therefore needs a data connection (Telegram today); without data the
+  composer path costs the user one tap.
+- The local database is not encrypted yet.
+- No accuracy, false-positive or battery figure is claimed anywhere, because none has been measured.
 
-Today, risk assessment is a deterministic, on-device rule engine — not a trained model. Every
-threshold is sourced to public guidance (NOAA heat index; WHO/AHA SpO₂ and HR bands, cited in
-`src/risk/config.ts`) and requires sustained evidence before escalating. The engine's outputs are
-shaped to fuse with a learned tier later; none has shipped. The planned next step is an explainable,
-on-device personal-baseline anomaly score (deviation from the user's own history), evaluated before
-any TFLite model — see [`ADR-002`](docs/decisions/ADR-002-rules-before-ml.md) for why. No accuracy,
-sensitivity, or false-positive figure is claimed anywhere in this repository; none has been measured.
+**Planned**
 
-This app provides a **risk indication** and a **recommendation to seek help** — it does not
-diagnose any condition.
+- Raksha Band wearable (XIAO ESP32-C3 with pulse, temperature and motion sensors) and a BLE adapter.
+  The sensor-source picker lists it, but no firmware or BLE code exists in this repository.
+- On-band fall detection.
+- Encrypted local storage with the key in the Android Keystore.
+- Caregiver role with push alerts, seven-day personal baselines with an explainable anomaly score,
+  Hindi interface, and background sensing via a foreground service.
 
-## Privacy model
+## Tech stack
 
-All physiological analysis runs on the device; no vital reading (HR, SpO₂, skin temperature, motion)
-is ever transmitted or stored on a server. The only network calls are coarse-location weather/AQI
-requests and the SOS SMS itself (via a credential-holding relay the app never touches, or the native
-SMS composer). Settings and the weather cache are stored in plaintext AsyncStorage today — flagged as
-a known gap against the PRD's encrypted-storage goal. Full detail:
-[`docs/security/privacy-architecture.md`](docs/security/privacy-architecture.md).
-
-## Hardware
-
-Today: any HR/SpO₂/skin-temperature-capable band or watch that writes to Android Health Connect — no
-custom hardware required. Future (stretch): an ESP32-based BLE prototype, only if a teammate already
-has the board — see `docs/ROADMAP.md`.
+Expo SDK 57, React Native 0.86, React 19, TypeScript 6, Expo Router. Health Connect via
+`react-native-health-connect`; sensors via `expo-sensors`; storage via `expo-sqlite` and
+AsyncStorage; alerts via `expo-notifications`; location via `expo-location`; SMS fallback via
+`expo-sms`. The emergency relay under `relay/` is a Cloudflare Worker in TypeScript, tested with
+Vitest. Application tests use Jest with `jest-expo` and React Native Testing Library: 63 suites,
+1457 tests. CI runs type checking, linting, both test suites and `expo-doctor` on every push.
 
 ## Setup
 
-Requires Node 22 and an Android device or emulator with Health Connect (Health Connect is a native
-module, so **Expo Go cannot run this app**).
+Requires Node 22 and an Expo account for device builds.
 
-```bash
-export PATH="/opt/homebrew/bin:$PATH"   # or however Node 22 is on your PATH
-npm ci
+```
+npm install
 ```
 
-Create `.env.local` (gitignored):
+Create `.env.local` (git-ignored):
+
 ```
-EXPO_PUBLIC_OPENWEATHER_API_KEY=your_key_here
-# optional — leave unset to use the native SMS composer fallback for SOS. Must end in /sos
-# (a bare origin is treated as not configured). The old EXPO_PUBLIC_TWILIO_SOS_URL name is
-# still read for one release when it points at the same Worker.
-EXPO_PUBLIC_SOS_RELAY_URL=https://<worker>/sos
-# optional — sent as the X-PHC-Key header when the deployment requires it
-EXPO_PUBLIC_SOS_RELAY_KEY=
+EXPO_PUBLIC_OPENWEATHER_API_KEY=your_key
+EXPO_PUBLIC_SOS_RELAY_URL=https://your-worker.workers.dev/sos
 ```
 
-The SOS relay itself (`relay/`) is a Cloudflare Worker deployed at
-`https://phc-sos-relay.xreep.workers.dev`, delivering over Telegram (device validated), Textbelt
-SMS (blocked for India on the free tier), or Twilio SMS (kept, disabled). See
-[`docs/features/sos-relay.md`](docs/features/sos-relay.md) for the full contract and status.
+The relay URL must end in `/sos`. Leaving it unset is supported: SOS then uses the SMS composer.
 
-Build and run a development client:
-```bash
-npx expo prebuild --platform android
+## Run
+
+Health Connect is a native module, so Expo Go cannot run this app. Build a development client once:
+
+```
 eas build --profile development --platform android
 ```
 
-## Testing
+Install the resulting APK, then start the bundler:
 
-```bash
-npm test                          # 63 suites / 1457 tests
-npx tsc --noEmit                  # typecheck
-npx eslint src --max-warnings 0   # lint
-
-cd relay && npm test              # 142 tests (vitest); also npm run typecheck / npm run check
+```
+npx expo start --dev-client
 ```
 
-All app tests are unit/integration tests against mocked native modules (Jest + React Native
-Testing Library); the relay's tests are vitest against a stubbed `fetch`. See
-[`docs/testing/validation-levels.md`](docs/testing/validation-levels.md) for
-what each level of testing does and does not cover, and
-[`docs/validation/device-validation-plan.md`](docs/validation/device-validation-plan.md) for the
-protocol to reach device validation.
+Add `--tunnel` if the phone and the development machine are not on the same network.
 
-## Demo
+## Tests
 
-**Current capability:** a simulated vitals window (default, clearly labelled "Simulated data") scored
-by the real rule engine; live weather/AQI for the phone's city; a dev-only "Simulate a fall" control
-that drives the real fall detector on real motion data; Trends reads real history from the on-device
-store when one exists; an SOS countdown → cancel, an emergency-relay POST (Telegram/SMS, not yet
-exercised from the app on a device), or an SMS composer opens pre-filled. Community is static/demo
-data. See
-[`docs/JUDGE_QA.md`](docs/JUDGE_QA.md) for the honest answer to "what's actually working" and every
-other likely judge question.
+```
+npm test
+npx tsc --noEmit
+npx eslint src --max-warnings 0
+cd relay && npm test
+```
 
-## Limitations
+## Documentation
 
-No background sensing (the app detects nothing with the screen off); the reading store, Trends, and
-the app's own emergency-relay dispatch are merged but not yet device validated (new EAS build in
-progress); Textbelt free SMS is blocked for India and Twilio stays disabled (KYC + paid top-up);
-settings are stored unencrypted. Full list:
-[`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) → Known Risks.
-
-## Roadmap
-
-See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the milestone-by-milestone path from here to a
-pilot-ready build.
-
-## Docs index
-
-- [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) — current state, remaining work
-- [`docs/BUILD_MATRIX.md`](docs/BUILD_MATRIX.md) — per-capability validation table
-- [`docs/ROADMAP.md`](docs/ROADMAP.md) — milestones M0–M12
-- [`docs/JUDGE_QA.md`](docs/JUDGE_QA.md) — honest answers to expected judge questions
-- [`CHANGELOG.md`](CHANGELOG.md) — release history
-- [`docs/architecture/overview.md`](docs/architecture/overview.md) — data flow, providers
-- [`docs/security/privacy-architecture.md`](docs/security/privacy-architecture.md) — permissions, data handling
-- [`docs/testing/validation-levels.md`](docs/testing/validation-levels.md) — testing ladder
-- [`docs/validation/device-validation-plan.md`](docs/validation/device-validation-plan.md) — device validation protocol
-- [`docs/decisions/`](docs/decisions/) — architecture decision records
-- [`docs/features/`](docs/features/) — per-feature docs (Health Connect, SOS relay)
-- [`docs/prototype-audit-2026-09-19.md`](docs/prototype-audit-2026-09-19.md) — the full audit this documentation tree implements
+- `docs/PROJECT_STATUS.md` — what is built, tested and validated, with the blockers.
+- `docs/ROADMAP.md` — milestones.
+- `docs/features/` — one document per feature, including the emergency relay contract.
+- `docs/decisions/` — architecture decision records.
+- `docs/validation/device-validation-plan.md` — the on-device test protocol and its results.

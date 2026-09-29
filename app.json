@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "phc-mobile",
+    "name": "Raksha",
     "slug": "phc-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -21,7 +21,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.phcmobile",
+      "package": "com.xreep.raksha",
       "permissions": [
         "android.permission.health.READ_HEART_RATE",
         "android.permission.health.READ_OXYGEN_SATURATION",
@@ -47,7 +47,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Personal Health Companion uses your approximate location for local heat and air-quality risk, and your precise location only when you send an emergency SOS.",
+          "locationWhenInUsePermission": "Raksha uses your approximate location for local heat and air-quality risk, and your precise location only when you send an emergency SOS.",
           "isIosBackgroundLocationEnabled": false,
           "isAndroidBackgroundLocationEnabled": false,
           "isAndroidForegroundServiceEnabled": false

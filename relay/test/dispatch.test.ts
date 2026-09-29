@@ -290,7 +290,7 @@ describe('dispatch', () => {
 
   it('passes the message through verbatim to every adapter', async () => {
     const adapters = fakes();
-    const message = 'PHC EMERGENCY - “quotes”, emoji 🚑, newline\nand trailing space ';
+    const message = 'RAKSHA EMERGENCY - “quotes”, emoji 🚑, newline\nand trailing space ';
     await dispatch(request({ message }), adapters, makeEnv());
     expect(adapters.telegram.sent).toEqual([message]);
     expect(adapters.textbelt.sent).toEqual([message]);

@@ -36,4 +36,4 @@ export const PHONE = '+919876543210';
 export const LINK_TOKEN_A = 'AbCdEfGhIjKlMnOpQrStUv';
 export const LINK_TOKEN_B = 'Zy_x-WvUtSrQpOnMlKjIhG';
 export const CHAT_ID = '123456789';
-export const MESSAGE = 'PHC EMERGENCY - Asha needs help. Possible fall detected. Location: https://maps.google.com/?q=12.97,77.59';
+export const MESSAGE = 'RAKSHA EMERGENCY - Asha needs help. Possible fall detected. Location: https://maps.google.com/?q=12.97,77.59';

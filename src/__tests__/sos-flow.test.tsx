@@ -324,7 +324,7 @@ describe('the window closing commits the alert', () => {
     // name comes from settings, the reason from the engine's `criticalRules`, the vitals from
     // the reading, the coordinates from the location resolver.
     const sentBody = JSON.parse(String(calls[0][1]?.body)).message as string;
-    expect(sentBody).toContain('PHC EMERGENCY - Asha needs help.');
+    expect(sentBody).toContain('RAKSHA EMERGENCY - Asha needs help.');
     expect(sentBody).toContain('Reason: Blood oxygen critically low.');
     expect(sentBody).toContain('Vitals: HR 124 bpm, SpO2 82%, skin 37.3C');
     expect(sentBody).toContain('Location: 13.082700, 80.270700 (+/-12m)');

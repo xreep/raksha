@@ -47,9 +47,9 @@ export function isLinkToken(value: string): boolean {
   return LINK_TOKEN.test(value);
 }
 
-export const LINKED_MESSAGE = 'Linked to PHC. You will receive emergency alerts here.';
+export const LINKED_MESSAGE = 'Linked to Raksha. You will receive emergency alerts here.';
 export const START_HELP =
-  'Open the link from the PHC app to link this chat. Once linked, this chat receives emergency alerts from the PHC app.';
+  'Open the link from the Raksha app to link this chat. Once linked, this chat receives emergency alerts from the Raksha app.';
 
 /** Build the deep link the app shows the caregiver. */
 export function telegramDeepLink(botUsername: string, linkToken: string): string {

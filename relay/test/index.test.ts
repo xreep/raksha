@@ -353,7 +353,7 @@ describe('POST /telegram/webhook', () => {
     expect(ok.status).toBe(200);
     expect(await ok.json()).toEqual({ ok: true, handled: 'linked' });
     expect(await kv.get(`link:${LINK_TOKEN_A}`)).toBe(CHAT_ID);
-    expect(stub.calls[0]!.json).toMatchObject({ chat_id: CHAT_ID, text: 'Linked to PHC. You will receive emergency alerts here.' });
+    expect(stub.calls[0]!.json).toMatchObject({ chat_id: CHAT_ID, text: 'Linked to Raksha. You will receive emergency alerts here.' });
   });
 
   it('full round trip: app polls /link (404) → caregiver taps → /link returns the chat id once', async () => {
