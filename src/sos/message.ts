@@ -202,7 +202,7 @@ export function composeSosMessage(context: SosContext): string {
   const who = context.userName?.trim();
   const subject = who !== undefined && who.length > 0 ? `${who} needs help` : 'Someone needs help';
 
-  const lines: string[] = [`PHC EMERGENCY - ${subject}.`, `Reason: ${causeText(context)}.`];
+  const lines: string[] = [`RAKSHA EMERGENCY - ${subject}.`, `Reason: ${causeText(context)}.`];
 
   const vitals = vitalsText(context);
   if (vitals !== null) lines.push(`Vitals: ${vitals}`);
@@ -214,7 +214,7 @@ export function composeSosMessage(context: SosContext): string {
 
   lines.push(...locationLines(context.location));
   lines.push(`Time: ${formatTimestamp(context.now)}`);
-  lines.push('Sent automatically by Personal Health Companion.');
+  lines.push('Sent automatically by Raksha.');
 
   return lines.join('\n');
 }

@@ -23,7 +23,7 @@ import { relayChannelsFor, sendViaRelay } from '@/sos/relay';
 import type { EmergencyContact } from '@/sos/types';
 
 const ENDPOINT = 'https://phc-sos-relay.example.workers.dev/sos';
-const MESSAGE = 'PHC EMERGENCY - Asha needs help.';
+const MESSAGE = 'RAKSHA EMERGENCY - Asha needs help.';
 
 const PHONE_ONLY: EmergencyContact = {
   id: 'c1',

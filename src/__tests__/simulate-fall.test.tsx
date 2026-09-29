@@ -403,7 +403,7 @@ describe('the simulated fall’s alert reaches a contact with a location', () =>
     // `criticalRules`, the vitals from the newest injected reading, the coordinates from the
     // resolver.
     const sent = JSON.parse(String(calls[0][1]?.body)).message as string;
-    expect(sent).toContain('PHC EMERGENCY - Asha needs help.');
+    expect(sent).toContain('RAKSHA EMERGENCY - Asha needs help.');
     expect(sent).toContain('Reason: Possible fall, no movement since.');
     expect(sent).toContain('Vitals: HR 78 bpm, SpO2 97%, skin 36.8C');
     expect(sent).toContain('Location: 13.082700, 80.270700 (+/-12m)');

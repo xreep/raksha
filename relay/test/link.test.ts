@@ -91,7 +91,7 @@ describe('handleTelegramUpdate', () => {
     expect(stub.calls).toHaveLength(1);
     expect(stub.calls[0]!.url).toBe(`${TELEGRAM_API_BASE}/bot${FAKE.telegramToken}/sendMessage`);
     expect(stub.calls[0]!.json).toMatchObject({ chat_id: '123456789', text: LINKED_MESSAGE });
-    expect(LINKED_MESSAGE).toBe('Linked to PHC. You will receive emergency alerts here.');
+    expect(LINKED_MESSAGE).toBe('Linked to Raksha. You will receive emergency alerts here.');
   });
 
   it('accepts the bot-mention form', async () => {

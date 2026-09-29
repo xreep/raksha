@@ -44,7 +44,7 @@ relay/
 ```json
 {
   "to": { "phone": "+919876543210", "telegramChatId": "123456789", "pushToken": "…" },
-  "message": "PHC EMERGENCY - …",
+  "message": "RAKSHA EMERGENCY - …",
   "channels": ["telegram", "textbelt"]
 }
 ```

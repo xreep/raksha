@@ -53,7 +53,7 @@ describe('composeSosMessage', () => {
 
     // Actionable content first: a concatenated SMS can arrive truncated or out of order, so
     // the identity and the reason must be in the first segment.
-    expect(message.split('\n')[0]).toBe('PHC EMERGENCY - Asha needs help.');
+    expect(message.split('\n')[0]).toBe('RAKSHA EMERGENCY - Asha needs help.');
     expect(message).toContain('Reason: Blood oxygen critically low.');
   });
 
@@ -130,7 +130,7 @@ describe('composeSosMessage', () => {
 
       expect(message).toContain(`Location: unavailable (${text})`);
       // The alert is intact — this is the whole reason a failed fix must not abort a dispatch.
-      expect(message).toContain('PHC EMERGENCY');
+      expect(message).toContain('RAKSHA EMERGENCY');
       expect(message).toContain('Reason: Blood oxygen critically low.');
       expect(isGsm7Safe(message)).toBe(true);
     }
@@ -191,7 +191,7 @@ describe('composeSosMessage', () => {
 
   it('closes with provenance so a recipient knows it was automatic', () => {
     expect(composeSosMessage(context()).split('\n').at(-1)).toBe(
-      'Sent automatically by Personal Health Companion.',
+      'Sent automatically by Raksha.',
     );
   });
 
