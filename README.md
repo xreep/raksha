@@ -13,7 +13,7 @@ Reads vitals on the phone, weighs them against local weather and air quality, an
 ![Tests](https://img.shields.io/badge/tests-1457_passing-2EA043?style=flat-square)
 ![Status](https://img.shields.io/badge/status-prototype-orange?style=flat-square)
 
-[Watch the demo](https://youtu.be/gu9cCQC_nqg) &middot; [Explore the 3D band](https://YOUR-USERNAME.github.io/YOUR-REPO/band-3d.html) &middot; [Project status](docs/PROJECT_STATUS.md) &middot; [Roadmap](docs/ROADMAP.md)
+[Watch the demo](https://youtu.be/gu9cCQC_nqg) &middot; [Explore Raksha Band 3D Model](https://claude.ai/artifact/HPoan1Xh1iyQxEW3r33v3S) &middot; [Project status](docs/PROJECT_STATUS.md) &middot; [Roadmap](docs/ROADMAP.md)
 
 </div>
 
@@ -78,7 +78,7 @@ A low-cost wrist band that feeds Raksha directly, built around a XIAO ESP32-C3. 
 
 Pod size is about 40 x 32 x 14 mm. Sensors sit on the skin side, the battery and controller in the middle, and the air sensor under a vent on top.
 
-Open the [interactive 3D model](https://YOUR-USERNAME.github.io/YOUR-REPO/band-3d.html) to rotate, zoom and tap each part. The source is [`docs/band-3d.html`](docs/band-3d.html).
+Explore the [interactive 3D model](https://claude.ai/artifact/HPoan1Xh1iyQxEW3r33v3S) to rotate, zoom and inspect the Raksha Band and its components.
 
 ## Current status
 
